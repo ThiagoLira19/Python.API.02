@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 # Importa bibliotecas.
-from flask import Flask, jsonify, request, abort, make_response, json, Response
 import sqlite3
+
+from flask import Flask, Response, abort, json, jsonify, make_response, request
 
 # Cria aplicativo Flask.
 app = Flask(__name__)
@@ -50,6 +51,41 @@ def get_all():
     except Exception as error:
         return {"error": f"Erro inesperado: {str(error)}"}
 
+@app.route("/items", methods=["POST"])
+def create():
+    try:
+        
+        post_data = request.get_json()
+        print(post_data)
+        
+        # Conectar ao banco de dados SQLite.
+        conn = sqlite3.connect(database)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        sql = """
+            INSERT INTO item 
+                (item_name, item_description, item_location, item_owner) 
+            VALUES (?, ?, ?, ?);
+        """
+        cursor.execute(sql, (
+            post_data['item_name'],
+            post_data['item_description'],
+            post_data['item_location'],
+            post_data['item_owner']
+        ))
+        conn.commit()
+        conn.close()
+
+        return ["success", "Item cadastrado com sucesso!"]
+        
+    # Tratamento de exceções.
+    except sqlite3.Error as error:
+        return {"error": f"Erro ao acessar o banco de dados: {str(error)}"}
+    except Exception as error:
+        return {"error": f"Erro inesperado: {str(error)}"}
+    
+    
 
 @app.route("/items/<int:id>", methods=["GET"])
 def get_one(id):
