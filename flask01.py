@@ -19,6 +19,15 @@ database = "./db/temp_db.db"
 # Request endpoint → /items
 # Response → JSON
 
+def prefix_remove(prefix, data):
+    new_data = {}
+    for key, value in data.items():
+        if key.startswith(prefix):
+            new_key = key[len(prefix):]
+            new_data[new_key] = value
+        else:
+            new_data[key] = value
+    return new_data
 
 @app.route("/items", methods=["GET"])
 def get_all():
@@ -85,14 +94,57 @@ def create():
     except Exception as error:
         return {"error": f"Erro inesperado: {str(error)}"}
     
-    
+
 
 @app.route("/items/<int:id>", methods=["GET"])
 def get_one(id):
-    print(f"O ID é {id}")
-    return {"Olá": "mundo"}
+    try:
+        conn = sqlite3.connect(database)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM item WHERE item_id = ? AND item_status = 'on'", (id,))
+        
+        item_row = cursor.fetchone()
+        
+        conn.close()
+        
+        if item_row:
+            
+            item = dict(item_row)
+            
+            new_item = prefix_remove('item_', item)
+            
+            return new_item, 200
+        
+        else:
+            return {"success", "Item não encontrado!"}, 404
+        
+    except sqlite3.Error as error:
+        return {"error": f"Erro ao acessar o banco de dados: {str(error)}"}, 500
+    except Exception as error:
+        return {"error": f"Erro inesperado: {str(error)}"}, 500
 
+@app.route("/items/<int:id>", methods=["DELETE"])
+def delete(id):
+    try:
+        conn = sqlite3.connect(database)
+        cursor = conn.cursor()
+        
+        sql = "UPDATE item SET item_status = 'off' WHERE item_id = ?"
+        
+        cursor.execute(sql, (id,))
+        
+        conn.commit()
+        
+    except sqlite3.Error as e:
+        return {"error": f"Erro ao acessar banco de dados: {str(e)}"}, 500
+    
+    except Exception as error:
+        return {"error": f"Erro inesperado: {str(error)}"}, 500
+    
 
 # Roda aplicativo Flask.
 if __name__ == "__main__":
     app.run(debug=True)
+
